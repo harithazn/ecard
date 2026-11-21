@@ -23,16 +23,28 @@
       pointer-events: none;
     }
 
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at 100% 0%, #ffd79b52, transparent 65%),
+        linear-gradient(225deg, transparent 42%, #21100850 100%);
+    }
+
     h1 {
+      z-index: 1;
       position: relative;
       margin: 1rem;
       font: italic 400 clamp(3rem, 10vw, 7rem) Georgia, serif;
       text-align: center;
-      text-shadow: 0 2px 12px #251710;
+      text-shadow: -2px 3px 12px #251710, 0 0 3px #251710;
     }
 
     button {
       position: fixed;
+      z-index: 1;
       right: 1rem;
       bottom: 1rem;
       padding: .65rem 1rem;
@@ -82,7 +94,8 @@
     const settings = {
       density: 50,
       maxPetals: 32,
-      leafCount: 50
+      leafCount: 50,
+      fallingPetals: 3
     };
 
     let width, height, previousTime, frame, heading;
@@ -90,12 +103,16 @@
     let falling = [];
     let paused = false;
 
-    function drawSprite(target, particle, x, y, angle, turn, perspective = 1) {
+    function drawSprite(target, particle, x, y, angle, turn, size = particle.size) {
       target.save();
       target.translate(x, y);
       target.rotate(angle);
       target.scale(turn, 1);
-      const size = particle.size * perspective;
+      const shadow = Math.min(28, size * .09) * canvas.width / width;
+      target.shadowColor = 'rgba(30, 13, 8, .45)';
+      target.shadowBlur = shadow;
+      target.shadowOffsetX = -shadow * .65;
+      target.shadowOffsetY = shadow * .8;
       target.drawImage(particle.sprite, -size / 2, -size / 2, size, size);
       target.restore();
     }
@@ -135,36 +152,36 @@
         }
       }
 
-      // Shuffle landing positions so the foreground fills from every direction.
+      // Mix colors and leaves throughout the settled arrangement.
       for (let index = spots.length - 1; index > 0; index--) {
         const other = Math.floor(random(0, index + 1));
         [spots[index], spots[other]] = [spots[other], spots[index]];
       }
 
-      falling = Array.from({ length: spots.length ? total : 0 }, (_, index) => {
+      for (let index = 0; index < total && spots.length; index++) {
         const { x, y, size } = spots[Math.floor(index * spots.length / total)];
-        // Space leaves throughout the pile and alternate the remaining petal colors.
         const leavesBefore = Math.floor(index * settings.leafCount / total);
         const isLeaf = Math.floor((index + 1) * settings.leafCount / total) > leavesBefore;
-        const sprites = isLeaf ? leafSprites : petalPalettes[(index - leavesBefore) % 2];
-        return {
-          x, y,
-          sprite: sprites[Math.floor(random(0, sprites.length))],
-          size,
-          angle: random(0, 2 * Math.PI),
-          driftX: random(-42, 42),
-          driftY: random(-42, 42),
-          depth: random(.2, .48),
-          spin: random(-5, 5),
-          delay: 3.4 * index / total + random(0, .35),
-          duration: random(1.3, 2.4)
-        };
-      });
-
-      if (settled) {
-        for (const particle of falling) land(particle);
-        falling = [];
+        const palette = petalPalettes[(index - leavesBefore) % 2];
+        const light = (x / width + 1 - y / height) / 2;
+        const shade = Math.max(0, Math.min(2, Math.floor(3 * light + random(-.65, .65))));
+        const sprite = isLeaf
+          ? leafSprites[Math.floor(random(0, leafSprites.length))]
+          : palette[3 * Math.floor(random(0, palette.length / 3)) + shade];
+        land({ x, y, size, sprite, angle: random(0, 2 * Math.PI) });
       }
+
+      falling = settled ? [] : Array.from({ length: settings.fallingPetals }, (_, index) => ({
+        sprite: petalPalettes[index % 2][1],
+        x: width * [.27, .68, .43][index % 3],
+        y: height - 15,
+        size: Math.min(75, Math.min(width, height) * .14),
+        closeSize: Math.hypot(width, height) * (index === 0 ? 2.3 : 1.1),
+        direction: index % 2 ? -1 : 1,
+        angle: random(-.3, .3),
+        delay: .85 + 4.6 * index,
+        duration: 6.2
+      }));
       draw();
       updatePlayback();
     }
@@ -185,15 +202,15 @@
       for (const particle of falling) {
         const progress = (elapsed - particle.delay) / particle.duration;
         if (progress < 0) continue;
+        // A close pass fills the view, then the petal recedes toward the floor.
         const remaining = 1 - progress;
-        const perspective = .15 + .85 * progress ** 1.6;
-        const inset = remaining * particle.depth;
-        const sway = remaining * Math.sin(progress * Math.PI * 2);
-        const x = particle.x + (width / 2 - particle.x) * inset + particle.driftX * sway;
-        const y = particle.y + (height / 2 - particle.y) * inset + particle.driftY * sway;
-        if (distanceFromTitle(x, y) <= particle.size * perspective * .71) continue;
-        const turn = .95 - .8 * remaining * Math.abs(Math.sin(progress * 11));
-        drawSprite(context, particle, x, y, particle.angle + particle.spin * remaining, turn, perspective);
+        const size = particle.size + (particle.closeSize - particle.size) * (1 - progress ** 2) ** 3;
+        const x = particle.x + (width / 2 - particle.x) * remaining
+          + particle.direction * width * (Math.sin(progress * Math.PI) * .12 - remaining ** 5 * 1.35);
+        const y = height * .37 + (particle.y - height * .37) * progress ** 1.25;
+        const turn = .95 - .23 * Math.sin(progress * Math.PI * 2) ** 2;
+        const angle = particle.angle + particle.direction * remaining * .45;
+        drawSprite(context, particle, x, y, angle, turn, size);
       }
     }
 
