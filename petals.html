@@ -58,6 +58,7 @@
 
     // Adjust these values to change the density, size and fall speed.
     const settings = {
+      density: 100,
       maxPetals: 32,
       minSize: 16,
       maxSize: 55,
@@ -93,7 +94,8 @@
       canvas.height = Math.round(height * scale);
       context.setTransform(scale, 0, 0, scale, 0, 0);
 
-      const count = Math.min(settings.maxPetals, Math.max(9, Math.round(width / 42)));
+      const baseCount = Math.min(settings.maxPetals, Math.max(9, Math.round(width / 42)));
+      const count = baseCount * settings.density;
       petals = Array.from({ length: count }, () => makePetal(true));
       draw();
     }
