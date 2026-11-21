@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rose Petals</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100svh;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(ellipse at 50% 35%, #fffaf1, #f2dbd5);
+      color: #642b40;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    h1 {
+      position: relative;
+      margin: 1rem;
+      font: italic 400 clamp(3rem, 10vw, 7rem) Georgia, serif;
+      text-align: center;
+    }
+
+    button {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      padding: .65rem 1rem;
+      border: 1px solid #b87b8a;
+      border-radius: 2rem;
+      background: #fffaf1;
+      color: inherit;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <canvas aria-hidden="true"></canvas>
+  <h1>Rose Petals</h1>
+  <button type="button" disabled>Pause petals</button>
+
+  <script>
+    const canvas = document.querySelector('canvas');
+    const context = canvas.getContext('2d');
+    const button = document.querySelector('button');
+    const sprite = new Image();
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const random = (min, max) => min + Math.random() * (max - min);
+
+    // Adjust these values to change the density, size and fall speed.
+    const settings = {
+      maxPetals: 32,
+      minSize: 16,
+      maxSize: 55,
+      minSpeed: 20,
+      maxSpeed: 65
+    };
+
+    let width, height, previousTime, frame;
+    let petals = [];
+    let paused = reducedMotion.matches;
+
+    function makePetal(scatter) {
+      const size = random(settings.minSize, settings.maxSize);
+      return {
+        x: random(-size, width + size),
+        y: scatter ? random(0, height) : random(-height * .3 - size, -size),
+        size,
+        speed: random(settings.minSpeed, settings.maxSpeed),
+        phase: random(0, 2 * Math.PI),
+        flutter: random(.8, 2),
+        sway: random(12, 40),
+        angle: random(0, 2 * Math.PI),
+        spin: random(-.8, .8),
+        opacity: random(.45, .92)
+      };
+    }
+
+    function resize() {
+      width = canvas.clientWidth;
+      height = canvas.clientHeight;
+      const scale = Math.min(devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+      context.setTransform(scale, 0, 0, scale, 0, 0);
+
+      const count = Math.min(settings.maxPetals, Math.max(9, Math.round(width / 42)));
+      petals = Array.from({ length: count }, () => makePetal(true));
+      draw();
+    }
+
+    function draw() {
+      context.clearRect(0, 0, width, height);
+      for (const petal of petals) {
+        context.save();
+        context.translate(petal.x, petal.y);
+        context.rotate(petal.angle + Math.sin(petal.phase) * .3);
+        // Narrow the silhouette as the petal turns edge-on.
+        context.scale(.16 + .84 * Math.abs(Math.cos(petal.phase)), 1);
+        context.globalAlpha = petal.opacity;
+        context.drawImage(sprite, -petal.size / 2, -petal.size / 2, petal.size, petal.size);
+        context.restore();
+      }
+    }
+
+    function animate(time) {
+      const elapsed = previousTime === undefined ? 0 : Math.min((time - previousTime) / 1000, .05);
+      previousTime = time;
+      const breeze = Math.sin(time / 2600) * 12;
+
+      for (let index = 0; index < petals.length; index++) {
+        const petal = petals[index];
+        petal.phase += petal.flutter * elapsed;
+        petal.angle += petal.spin * elapsed;
+        petal.x += (Math.sin(petal.phase) * petal.sway + breeze) * elapsed;
+        petal.y += petal.speed * (1 + Math.cos(petal.phase) * .22) * elapsed;
+
+        if (petal.x < -petal.size) petal.x = width + petal.size;
+        if (petal.x > width + petal.size) petal.x = -petal.size;
+        if (petal.y > height + petal.size) petals[index] = makePetal(false);
+      }
+
+      draw();
+      frame = requestAnimationFrame(animate);
+    }
+
+    function updatePlayback() {
+      cancelAnimationFrame(frame);
+      previousTime = undefined;
+      button.textContent = paused ? 'Play petals' : 'Pause petals';
+      if (!paused) frame = requestAnimationFrame(animate);
+    }
+
+    sprite.onload = () => {
+      resize();
+      addEventListener('resize', resize);
+      button.disabled = false;
+      button.addEventListener('click', () => {
+        paused = !paused;
+        updatePlayback();
+      });
+      reducedMotion.addEventListener('change', event => {
+        paused = event.matches;
+        updatePlayback();
+      });
+      updatePlayback();
+    };
+
+    sprite.onerror = () => {
+      button.textContent = 'Petal image unavailable';
+    };
+
+    sprite.src = 'assets/rose-petal.webp';
+  </script>
+</body>
+</html>
