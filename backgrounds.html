@@ -140,7 +140,6 @@
       const url = new URL('petals.html', location.href);
       url.searchParams.set('background', scene.url);
       openCard.href = url.href;
-      url.searchParams.set('preview', '1');
       preview.src = url.href;
       openCard.hidden = scene.url.startsWith('blob:');
     }
