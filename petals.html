@@ -14,6 +14,23 @@
       background: #211713;
     }
 
+    body::before {
+      content: none;
+      position: fixed;
+      inset: -6rem;
+      pointer-events: none;
+      background: var(--selected-background) center / cover no-repeat;
+      filter: blur(3rem) saturate(.8) brightness(.86);
+    }
+
+    body.has-selected-background {
+      background-color: #b69b86;
+    }
+
+    body.has-selected-background::before {
+      content: "";
+    }
+
     .card {
       position: relative;
       isolation: isolate;
@@ -26,7 +43,9 @@
       color: #fff3db;
     }
 
-    .card.portrait {
+    .has-selected-background .card {
+      background-image: var(--selected-background);
+      box-shadow: 0 0 2rem #21171345;
       width: min(100%, 56.25svh);
       height: auto;
       aspect-ratio: 9 / 16;
@@ -63,7 +82,7 @@
       text-shadow: -3px 5px 18px #241017, -1px 2px 4px #251710;
     }
 
-    .portrait h1 {
+    .has-selected-background h1 {
       font-size: clamp(2rem, 12cqw, 7rem);
     }
 
@@ -89,7 +108,6 @@
   </main>
 
   <script>
-    const card = document.querySelector('.card');
     const background = new URLSearchParams(location.search).get('background');
     if (background && URL.canParse(background, location.href)) {
       const url = new URL(background, location.href);
@@ -99,8 +117,8 @@
         /\.(webp|png|jpe?g|avif)$/i.test(url.pathname);
       const localImage = url.protocol === 'blob:' && url.origin === location.origin;
       if (bundledImage || localImage) {
-        card.classList.add('portrait');
-        card.style.backgroundImage = `url(${JSON.stringify(url.href)})`;
+        document.body.style.setProperty('--selected-background', `url(${JSON.stringify(url.href)})`);
+        document.body.classList.add('has-selected-background');
       }
     }
 
