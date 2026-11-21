@@ -23,7 +23,20 @@
       pointer-events: none;
     }
 
+    #foreground {
+      z-index: 2;
+    }
+
+    #foreground.opening {
+      background: #a64354 url("assets/rose-petal.webp") center / 270vmax no-repeat;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #foreground.opening { background: none; }
+    }
+
     body::after {
+      z-index: 3;
       content: "";
       position: fixed;
       inset: 0;
@@ -44,7 +57,7 @@
 
     button {
       position: fixed;
-      z-index: 1;
+      z-index: 4;
       right: 1rem;
       bottom: 1rem;
       padding: .65rem 1rem;
@@ -59,11 +72,14 @@
 <body>
   <canvas aria-hidden="true"></canvas>
   <h1>Rose Petals</h1>
+  <canvas id="foreground" class="opening" aria-hidden="true"></canvas>
   <button type="button" disabled>Pause fall</button>
 
   <script>
     const canvas = document.querySelector('canvas');
     const context = canvas.getContext('2d');
+    const foreground = document.querySelector('#foreground');
+    const foregroundContext = foreground.getContext('2d');
     const pile = document.createElement('canvas');
     const pileContext = pile.getContext('2d');
     const title = document.querySelector('h1');
@@ -125,11 +141,12 @@
       width = canvas.clientWidth;
       height = canvas.clientHeight;
       const scale = Math.min(devicePixelRatio || 1, 2);
-      canvas.width = pile.width = Math.round(width * scale);
-      canvas.height = pile.height = Math.round(height * scale);
+      canvas.width = foreground.width = pile.width = Math.round(width * scale);
+      canvas.height = foreground.height = pile.height = Math.round(height * scale);
 
       heading = title.getBoundingClientRect();
       context.setTransform(scale, 0, 0, scale, 0, 0);
+      foregroundContext.setTransform(scale, 0, 0, scale, 0, 0);
       pileContext.setTransform(scale, 0, 0, scale, 0, 0);
 
       const baseCount = Math.min(settings.maxPetals, Math.max(9, Math.round(width / 42)));
@@ -176,7 +193,8 @@
         x: width * [.27, .68, .43][index % 3],
         y: height - 15,
         size: Math.min(75, Math.min(width, height) * .14),
-        closeSize: Math.hypot(width, height) * (index === 0 ? 2.3 : 1.1),
+        opening: index === 0,
+        closeSize: Math.hypot(width, height) * (index === 0 ? 2.6 : 1.1),
         direction: index % 2 ? -1 : 1,
         angle: random(-.3, .3),
         delay: .85 + 4.6 * index,
@@ -199,18 +217,22 @@
     function draw() {
       context.clearRect(0, 0, width, height);
       context.drawImage(pile, 0, 0, width, height);
+      foregroundContext.clearRect(0, 0, width, height);
       for (const particle of falling) {
-        const progress = (elapsed - particle.delay) / particle.duration;
-        if (progress < 0) continue;
+        const time = (elapsed - particle.delay) / particle.duration;
+        if (time < 0 && !particle.opening) continue;
+        const progress = Math.max(0, time);
         // A close pass fills the view, then the petal recedes toward the floor.
         const remaining = 1 - progress;
         const size = particle.size + (particle.closeSize - particle.size) * (1 - progress ** 2) ** 3;
+        const entry = particle.opening ? 0 : remaining ** 5 * 1.35;
         const x = particle.x + (width / 2 - particle.x) * remaining
-          + particle.direction * width * (Math.sin(progress * Math.PI) * .12 - remaining ** 5 * 1.35);
-        const y = height * .37 + (particle.y - height * .37) * progress ** 1.25;
+          + particle.direction * width * (Math.sin(progress * Math.PI) * .12 - entry);
+        const startY = height * (particle.opening ? .5 : .37);
+        const y = startY + (particle.y - startY) * progress ** 1.25;
         const turn = .95 - .23 * Math.sin(progress * Math.PI * 2) ** 2;
         const angle = particle.angle + particle.direction * remaining * .45;
-        drawSprite(context, particle, x, y, angle, turn, size);
+        drawSprite(foregroundContext, particle, x, y, angle, turn, size);
       }
     }
 
@@ -258,6 +280,7 @@
         }))
       );
       fillScene();
+      foreground.classList.remove('opening');
       addEventListener('resize', () => fillScene(!falling.length || reducedMotion.matches));
       button.disabled = false;
       button.addEventListener('click', () => {
@@ -277,6 +300,7 @@
         }
       });
     }).catch(() => {
+      foreground.classList.remove('opening');
       button.textContent = 'Animation image unavailable';
     });
   </script>
