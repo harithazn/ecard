@@ -60,8 +60,14 @@
       'rose-petal-scalloped.webp',
       'rose-petal-twisted.webp'
     ];
+    const leafFiles = [
+      'green-leaf-light.webp',
+      'green-leaf-medium.webp',
+      'green-leaf-dark.webp'
+    ];
     const lighting = ['brightness(80%)', 'none', 'brightness(120%)'];
     let litSprites;
+    let leafSprites;
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     const random = (min, max) => min + Math.random() * (max - min);
 
@@ -69,6 +75,7 @@
     const settings = {
       density: 50,
       maxPetals: 32,
+      leafCount: 100,
       minSize: 16,
       maxSize: 55,
       minSpeed: 20,
@@ -76,10 +83,10 @@
     };
 
     let width, height, previousTime, frame;
-    let petals = [];
+    let particles = [];
     let paused = reducedMotion.matches;
 
-    function makePetal(scatter) {
+    function makeParticle(sprites, scatter) {
       const size = random(settings.minSize, settings.maxSize);
       return {
         x: random(-size, width + size),
@@ -91,7 +98,8 @@
         sway: random(12, 40),
         angle: random(0, 2 * Math.PI),
         spin: random(-.8, .8),
-        sprite: litSprites[Math.floor(random(0, litSprites.length))]
+        sprites,
+        sprite: sprites[Math.floor(random(0, sprites.length))]
       };
     }
 
@@ -105,19 +113,22 @@
 
       const baseCount = Math.min(settings.maxPetals, Math.max(9, Math.round(width / 42)));
       const count = baseCount * settings.density;
-      petals = Array.from({ length: count }, () => makePetal(true));
+      particles = [
+        ...Array.from({ length: count }, () => makeParticle(litSprites, true)),
+        ...Array.from({ length: settings.leafCount }, () => makeParticle(leafSprites, true))
+      ];
       draw();
     }
 
     function draw() {
       context.clearRect(0, 0, width, height);
-      for (const petal of petals) {
+      for (const particle of particles) {
         context.save();
-        context.translate(petal.x, petal.y);
-        context.rotate(petal.angle + Math.sin(petal.phase) * .3);
+        context.translate(particle.x, particle.y);
+        context.rotate(particle.angle + Math.sin(particle.phase) * .3);
         // Narrow the silhouette as the petal turns edge-on.
-        context.scale(.16 + .84 * Math.abs(Math.cos(petal.phase)), 1);
-        context.drawImage(petal.sprite, -petal.size / 2, -petal.size / 2, petal.size, petal.size);
+        context.scale(.16 + .84 * Math.abs(Math.cos(particle.phase)), 1);
+        context.drawImage(particle.sprite, -particle.size / 2, -particle.size / 2, particle.size, particle.size);
         context.restore();
       }
     }
@@ -127,16 +138,18 @@
       previousTime = time;
       const breeze = Math.sin(time / 2600) * 12;
 
-      for (let index = 0; index < petals.length; index++) {
-        const petal = petals[index];
-        petal.phase += petal.flutter * elapsed;
-        petal.angle += petal.spin * elapsed;
-        petal.x += (Math.sin(petal.phase) * petal.sway + breeze) * elapsed;
-        petal.y += petal.speed * (1 + Math.cos(petal.phase) * .22) * elapsed;
+      for (let index = 0; index < particles.length; index++) {
+        const particle = particles[index];
+        particle.phase += particle.flutter * elapsed;
+        particle.angle += particle.spin * elapsed;
+        particle.x += (Math.sin(particle.phase) * particle.sway + breeze) * elapsed;
+        particle.y += particle.speed * (1 + Math.cos(particle.phase) * .22) * elapsed;
 
-        if (petal.x < -petal.size) petal.x = width + petal.size;
-        if (petal.x > width + petal.size) petal.x = -petal.size;
-        if (petal.y > height + petal.size) petals[index] = makePetal(false);
+        if (particle.x < -particle.size) particle.x = width + particle.size;
+        if (particle.x > width + particle.size) particle.x = -particle.size;
+        if (particle.y > height + particle.size) {
+          particles[index] = makeParticle(particle.sprites, false);
+        }
       }
 
       draw();
@@ -159,9 +172,13 @@
       });
     }
 
-    Promise.all(petalFiles.map(loadSprite)).then(sprites => {
+    Promise.all([
+      Promise.all(petalFiles.map(loadSprite)),
+      Promise.all(leafFiles.map(loadSprite))
+    ]).then(([petalSprites, leaves]) => {
+      leafSprites = leaves;
       // Prepare the lighting variations once, keeping each petal cutout.
-      litSprites = sprites.flatMap(sprite => lighting.map(filter => {
+      litSprites = petalSprites.flatMap(sprite => lighting.map(filter => {
         const variant = document.createElement('canvas');
         variant.width = sprite.naturalWidth;
         variant.height = sprite.naturalHeight;
@@ -183,7 +200,7 @@
       });
       updatePlayback();
     }).catch(() => {
-      button.textContent = 'Petal image unavailable';
+      button.textContent = 'Animation image unavailable';
     });
   </script>
 </body>
