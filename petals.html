@@ -23,8 +23,15 @@
       pointer-events: none;
     }
 
+    canvas:not(#foreground) {
+      filter: blur(clamp(2px, .48vw, 5px));
+      transform: scale(1.015);
+    }
+
     #foreground {
       z-index: 2;
+      filter: blur(clamp(5px, .85vw, 12px));
+      transform: scale(1.035);
     }
 
     #foreground.opening {
@@ -42,8 +49,10 @@
       inset: 0;
       pointer-events: none;
       background:
-        radial-gradient(ellipse at 100% 0%, #ffd79b52, transparent 65%),
-        linear-gradient(225deg, transparent 42%, #21100850 100%);
+        radial-gradient(ellipse at 100% 0%, #ffe6ad90, #f4a96329 33%, transparent 66%),
+        linear-gradient(147deg, transparent 36%, #ffdc9936 46%, #ffc98516 55%, transparent 67%),
+        radial-gradient(ellipse at 58% 44%, transparent 30%, #27121b64 100%),
+        linear-gradient(225deg, transparent 37%, #28121a66 100%);
     }
 
     h1 {
@@ -52,7 +61,7 @@
       margin: 1rem;
       font: italic 400 clamp(3rem, 10vw, 7rem) Georgia, serif;
       text-align: center;
-      text-shadow: -2px 3px 12px #251710, 0 0 3px #251710;
+      text-shadow: -3px 5px 18px #241017, -1px 2px 4px #251710;
     }
 
     button {
@@ -110,8 +119,7 @@
     const settings = {
       density: 50,
       maxPetals: 32,
-      leafCount: 50,
-      fallingPetals: 3
+      leafCount: 50
     };
 
     let width, height, previousTime, frame, heading;
@@ -188,18 +196,16 @@
         land({ x, y, size, sprite, angle: random(0, 2 * Math.PI) });
       }
 
-      falling = settled ? [] : Array.from({ length: settings.fallingPetals }, (_, index) => ({
-        sprite: petalPalettes[index % 2][1],
-        x: width * [.27, .68, .43][index % 3],
+      falling = settled ? [] : [{
+        sprite: petalPalettes[0][1],
+        x: width * .32,
         y: height - 15,
         size: Math.min(75, Math.min(width, height) * .14),
-        opening: index === 0,
-        closeSize: Math.hypot(width, height) * (index === 0 ? 2.6 : 1.1),
-        direction: index % 2 ? -1 : 1,
+        closeSize: Math.hypot(width, height) * 2.6,
         angle: random(-.3, .3),
-        delay: .85 + 4.6 * index,
+        delay: .85,
         duration: 6.2
-      }));
+      }];
       draw();
       updatePlayback();
     }
@@ -219,19 +225,16 @@
       context.drawImage(pile, 0, 0, width, height);
       foregroundContext.clearRect(0, 0, width, height);
       for (const particle of falling) {
-        const time = (elapsed - particle.delay) / particle.duration;
-        if (time < 0 && !particle.opening) continue;
-        const progress = Math.max(0, time);
+        const progress = Math.max(0, (elapsed - particle.delay) / particle.duration);
         // A close pass fills the view, then the petal recedes toward the floor.
         const remaining = 1 - progress;
         const size = particle.size + (particle.closeSize - particle.size) * (1 - progress ** 2) ** 3;
-        const entry = particle.opening ? 0 : remaining ** 5 * 1.35;
         const x = particle.x + (width / 2 - particle.x) * remaining
-          + particle.direction * width * (Math.sin(progress * Math.PI) * .12 - entry);
-        const startY = height * (particle.opening ? .5 : .37);
+          + width * Math.sin(progress * Math.PI) * .12;
+        const startY = height * .5;
         const y = startY + (particle.y - startY) * progress ** 1.25;
         const turn = .95 - .23 * Math.sin(progress * Math.PI * 2) ** 2;
-        const angle = particle.angle + particle.direction * remaining * .45;
+        const angle = particle.angle + remaining * .45;
         drawSprite(foregroundContext, particle, x, y, angle, turn, size);
       }
     }
