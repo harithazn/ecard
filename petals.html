@@ -11,8 +11,8 @@
       overflow: hidden;
       display: grid;
       place-items: center;
-      background: radial-gradient(ellipse at 50% 35%, #fffaf1, #f2dbd5);
-      color: #642b40;
+      background: #4c3429 url("assets/walnut-grain.webp") center / cover no-repeat;
+      color: #fff3db;
     }
 
     canvas {
@@ -28,6 +28,7 @@
       margin: 1rem;
       font: italic 400 clamp(3rem, 10vw, 7rem) Georgia, serif;
       text-align: center;
+      text-shadow: 0 2px 12px #251710;
     }
 
     button {
@@ -38,7 +39,7 @@
       border: 1px solid #b87b8a;
       border-radius: 2rem;
       background: #fffaf1;
-      color: inherit;
+      color: #642b40;
       cursor: pointer;
     }
   </style>
@@ -46,11 +47,14 @@
 <body>
   <canvas aria-hidden="true"></canvas>
   <h1>Rose Petals</h1>
-  <button type="button" disabled>Pause petals</button>
+  <button type="button" disabled>Pause fall</button>
 
   <script>
     const canvas = document.querySelector('canvas');
     const context = canvas.getContext('2d');
+    const pile = document.createElement('canvas');
+    const pileContext = pile.getContext('2d');
+    const title = document.querySelector('h1');
     const button = document.querySelector('button');
     const petalFiles = [
       'rose-petal.webp',
@@ -74,98 +78,130 @@
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     const random = (min, max) => min + Math.random() * (max - min);
 
-    // Adjust these values to change the density, size and fall speed.
+    // Adjust these values to change how many petals and leaves land.
     const settings = {
       density: 50,
       maxPetals: 32,
-      leafCount: 50,
-      minSize: 16,
-      maxSize: 55,
-      minSpeed: 20,
-      maxSpeed: 65
+      leafCount: 50
     };
 
     let width, height, previousTime, frame;
-    let particles = [];
-    let paused = reducedMotion.matches;
+    let elapsed = 0;
+    let falling = [];
+    let paused = false;
 
-    function makeParticle(sprites, scatter) {
-      const size = random(settings.minSize, settings.maxSize);
-      return {
-        x: random(-size, width + size),
-        y: scatter ? random(0, height) : random(-height * .3 - size, -size),
-        size,
-        speed: random(settings.minSpeed, settings.maxSpeed),
-        phase: random(0, 2 * Math.PI),
-        flutter: random(.8, 2),
-        sway: random(12, 40),
-        angle: random(0, 2 * Math.PI),
-        spin: random(-.8, .8),
-        sprites,
-        sprite: sprites[Math.floor(random(0, sprites.length))]
-      };
+    function drawSprite(target, particle, x, y, angle, turn) {
+      target.save();
+      target.translate(x, y);
+      target.rotate(angle);
+      target.scale(turn, 1);
+      const size = particle.size;
+      target.drawImage(particle.sprite, -size / 2, -size / 2, size, size);
+      target.restore();
     }
 
-    function resize() {
+    function fillScene(settled = reducedMotion.matches) {
+      cancelAnimationFrame(frame);
+      frame = undefined;
+      elapsed = 0;
+      previousTime = undefined;
       width = canvas.clientWidth;
       height = canvas.clientHeight;
       const scale = Math.min(devicePixelRatio || 1, 2);
-      canvas.width = Math.round(width * scale);
-      canvas.height = Math.round(height * scale);
-      context.setTransform(scale, 0, 0, scale, 0, 0);
+      canvas.width = pile.width = Math.round(width * scale);
+      canvas.height = pile.height = Math.round(height * scale);
+
+      const heading = title.getBoundingClientRect();
+      const gap = 22;
+      const left = heading.left - gap;
+      const top = heading.top - gap;
+      const right = heading.right + gap;
+      const bottom = heading.bottom + gap;
+
+      // Leave a window of exposed wood around the title in both layers.
+      for (const target of [context, pileContext]) {
+        target.setTransform(scale, 0, 0, scale, 0, 0);
+        target.beginPath();
+        target.rect(0, 0, width, height);
+        target.roundRect(left, top, right - left, bottom - top, 26);
+        target.clip('evenodd');
+      }
 
       const baseCount = Math.min(settings.maxPetals, Math.max(9, Math.round(width / 42)));
-      const count = baseCount * settings.density;
-      particles = [
-        ...Array.from({ length: count }, (_, index) =>
-          makeParticle(petalPalettes[index % petalPalettes.length], true)
-        ),
-        ...Array.from({ length: settings.leafCount }, () => makeParticle(leafSprites, true))
-      ];
+      const petalCount = baseCount * settings.density;
+      const total = petalCount + settings.leafCount;
+      const cell = Math.sqrt(width * height / (total * 1.25));
+      const columns = Math.max(1, Math.ceil(width / cell));
+      const rows = Math.max(1, Math.ceil(height / cell));
+      const spots = [];
+
+      for (let row = rows - 1; row >= 0; row--) {
+        for (let column = 0; column < columns; column++) {
+          const x = (column + random(.05, .95)) * width / columns;
+          const y = (row + random(.05, .95)) * height / rows;
+          if (x < left || x > right || y < top || y > bottom) spots.push({ x, y });
+        }
+      }
+
+      falling = Array.from({ length: spots.length ? total : 0 }, (_, index) => {
+        const { x, y } = spots[Math.floor(index * spots.length / total)];
+        // Space leaves throughout the pile and alternate the remaining petal colors.
+        const leavesBefore = Math.floor(index * settings.leafCount / total);
+        const isLeaf = Math.floor((index + 1) * settings.leafCount / total) > leavesBefore;
+        const sprites = isLeaf ? leafSprites : petalPalettes[(index - leavesBefore) % 2];
+        return {
+          x, y,
+          sprite: sprites[Math.floor(random(0, sprites.length))],
+          size: random(1.8, 3) * cell,
+          angle: random(0, 2 * Math.PI),
+          drift: random(-70, 70),
+          spin: random(-5, 5),
+          delay: 3.4 * index / total + random(0, .35),
+          duration: 1.05 + 1.2 * y / height + random(0, .35)
+        };
+      });
+
+      if (settled) {
+        for (const particle of falling) land(particle);
+        falling = [];
+      }
       draw();
+      updatePlayback();
+    }
+
+    function land(particle) {
+      drawSprite(pileContext, particle, particle.x, particle.y, particle.angle, .95);
     }
 
     function draw() {
       context.clearRect(0, 0, width, height);
-      for (const particle of particles) {
-        context.save();
-        context.translate(particle.x, particle.y);
-        context.rotate(particle.angle + Math.sin(particle.phase) * .3);
-        // Narrow the silhouette as the petal turns edge-on.
-        context.scale(.16 + .84 * Math.abs(Math.cos(particle.phase)), 1);
-        context.drawImage(particle.sprite, -particle.size / 2, -particle.size / 2, particle.size, particle.size);
-        context.restore();
+      context.drawImage(pile, 0, 0, width, height);
+      for (const particle of falling) {
+        const progress = (elapsed - particle.delay) / particle.duration;
+        if (progress < 0) continue;
+        const remaining = 1 - progress;
+        const x = particle.x + remaining * particle.drift * Math.cos(progress * 9);
+        const y = particle.y - remaining * (particle.y + particle.size);
+        const turn = .95 - .8 * remaining * Math.abs(Math.sin(progress * 11));
+        drawSprite(context, particle, x, y, particle.angle + particle.spin * remaining, turn);
       }
     }
 
     function animate(time) {
-      const elapsed = previousTime === undefined ? 0 : Math.min((time - previousTime) / 1000, .05);
+      if (previousTime !== undefined) elapsed += Math.min((time - previousTime) / 1000, .05);
       previousTime = time;
-      const breeze = Math.sin(time / 2600) * 12;
-
-      for (let index = 0; index < particles.length; index++) {
-        const particle = particles[index];
-        particle.phase += particle.flutter * elapsed;
-        particle.angle += particle.spin * elapsed;
-        particle.x += (Math.sin(particle.phase) * particle.sway + breeze) * elapsed;
-        particle.y += particle.speed * (1 + Math.cos(particle.phase) * .22) * elapsed;
-
-        if (particle.x < -particle.size) particle.x = width + particle.size;
-        if (particle.x > width + particle.size) particle.x = -particle.size;
-        if (particle.y > height + particle.size) {
-          particles[index] = makeParticle(particle.sprites, false);
-        }
-      }
-
+      falling = falling.filter(particle => {
+        if (elapsed < particle.delay + particle.duration) return true;
+        land(particle);
+        return false;
+      });
       draw();
-      frame = requestAnimationFrame(animate);
+      updatePlayback();
     }
 
     function updatePlayback() {
-      cancelAnimationFrame(frame);
-      previousTime = undefined;
-      button.textContent = paused ? 'Play petals' : 'Pause petals';
-      if (!paused) frame = requestAnimationFrame(animate);
+      button.textContent = falling.length ? (paused ? 'Resume fall' : 'Pause fall') : 'Replay fall';
+      if (falling.length && !paused) frame = requestAnimationFrame(animate);
     }
 
     function loadSprite(file) {
@@ -194,18 +230,25 @@
           return variant;
         }))
       );
-      resize();
-      addEventListener('resize', resize);
+      fillScene();
+      addEventListener('resize', () => fillScene(!falling.length || reducedMotion.matches));
       button.disabled = false;
       button.addEventListener('click', () => {
+        if (!falling.length) {
+          fillScene(false);
+          return;
+        }
         paused = !paused;
+        cancelAnimationFrame(frame);
+        previousTime = undefined;
         updatePlayback();
       });
       reducedMotion.addEventListener('change', event => {
-        paused = event.matches;
-        updatePlayback();
+        if (event.matches) {
+          paused = false;
+          fillScene(true);
+        }
       });
-      updatePlayback();
     }).catch(() => {
       button.textContent = 'Animation image unavailable';
     });
