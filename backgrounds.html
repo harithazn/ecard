@@ -17,7 +17,7 @@
     h1 { font: 400 clamp(2.5rem, 6vw, 4.5rem)/1.05 Georgia, serif; margin: 0 0 1.25rem; }
     h2 { font: 400 1.65rem Georgia, serif; margin: 0; }
     .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 2rem; }
-    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; margin: 1rem 0; }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .85rem; margin: 1rem 0; }
     .option {
       display: block;
       padding: .4rem;
@@ -30,14 +30,18 @@
       font: inherit;
     }
     .option[aria-pressed="true"] { border-color: #783e4c; box-shadow: inset 0 0 0 2px #783e4c; }
-    .option img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: .45rem; background: #e5d5c4; }
+    .option img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; border-radius: .45rem; background: #e5d5c4; }
     .option span { display: block; padding: .4rem .2rem .2rem; overflow-wrap: anywhere; }
     .file-label { display: block; font-weight: 600; margin-bottom: .35rem; }
     input { max-width: 100%; }
-    .preview { align-self: start; }
+    .preview { align-self: start; position: sticky; top: 1rem; }
     iframe { display: block; margin-top: 1rem; border: 0; border-radius: 1rem; width: 100%; height: clamp(24rem, 58vh, 37rem); background: #4c3429; }
     :focus-visible { outline: 2px solid #783e4c; outline-offset: 4px; }
-    @media (max-width: 48rem) { .layout { grid-template-columns: 1fr; gap: 1.25rem; } }
+    @media (max-width: 48rem) {
+      .layout { grid-template-columns: 1fr; gap: 1.25rem; }
+      .preview { position: static; order: -1; }
+      iframe { height: clamp(18rem, 48vh, 28rem); }
+    }
   </style>
 </head>
 <body>
@@ -52,15 +56,79 @@
       <section class="preview" aria-labelledby="preview-title">
         <h2 id="preview-title" aria-live="polite">Preview</h2>
         <iframe id="preview" title="Wedding e-card preview"></iframe>
+        <p><a id="open-card" target="_blank" rel="noopener">Open selected design</a></p>
       </section>
     </div>
   </main>
   <script>
-    const bundled = [{ name: 'Warm walnut', url: 'assets/walnut-grain.webp' }];
+    const bundled = [
+      {"name": "Burgundy Lanterns Over Misty Mountains-1", "url": "assets/backgrounds/burgundy-lanterns-over-misty-mountains-1.webp", "thumbnail": "assets/backgrounds/thumbnails/burgundy-lanterns-over-misty-mountains-1.webp"},
+      {"name": "Dreamy Floral Garden Wedding Arch-2", "url": "assets/backgrounds/dreamy-floral-garden-wedding-arch-2.webp", "thumbnail": "assets/backgrounds/thumbnails/dreamy-floral-garden-wedding-arch-2.webp"},
+      {"name": "Dreamy Forest Wedding Arch-10", "url": "assets/backgrounds/dreamy-forest-wedding-arch-10.webp", "thumbnail": "assets/backgrounds/thumbnails/dreamy-forest-wedding-arch-10.webp"},
+      {"name": "Dreamy Golden Garden Wedding Aisle-3", "url": "assets/backgrounds/dreamy-golden-garden-wedding-aisle-3.webp", "thumbnail": "assets/backgrounds/thumbnails/dreamy-golden-garden-wedding-aisle-3.webp"},
+      {"name": "Dreamy Golden Garden Wedding Arch-8", "url": "assets/backgrounds/dreamy-golden-garden-wedding-arch-8.webp", "thumbnail": "assets/backgrounds/thumbnails/dreamy-golden-garden-wedding-arch-8.webp"},
+      {"name": "Dreamy Golden-Hour Garden Wedding Arch-2", "url": "assets/backgrounds/dreamy-golden-hour-garden-wedding-arch-2.webp", "thumbnail": "assets/backgrounds/thumbnails/dreamy-golden-hour-garden-wedding-arch-2.webp"},
+      {"name": "Dreamy Lakeside Wedding at Dusk-6", "url": "assets/backgrounds/dreamy-lakeside-wedding-at-dusk-6.webp", "thumbnail": "assets/backgrounds/thumbnails/dreamy-lakeside-wedding-at-dusk-6.webp"},
+      {"name": "Dreamy Woodland Wedding Ceremony-4", "url": "assets/backgrounds/dreamy-woodland-wedding-ceremony-4.webp", "thumbnail": "assets/backgrounds/thumbnails/dreamy-woodland-wedding-ceremony-4.webp"},
+      {"name": "Elegant Seaside Sunset Wedding Arch-3", "url": "assets/backgrounds/elegant-seaside-sunset-wedding-arch-3.webp", "thumbnail": "assets/backgrounds/thumbnails/elegant-seaside-sunset-wedding-arch-3.webp"},
+      {"name": "Enchanted Forest Wedding Aisle-7", "url": "assets/backgrounds/enchanted-forest-wedding-aisle-7.webp", "thumbnail": "assets/backgrounds/thumbnails/enchanted-forest-wedding-aisle-7.webp"},
+      {"name": "Enchanted Forest Wedding Altar-8", "url": "assets/backgrounds/enchanted-forest-wedding-altar-8.webp", "thumbnail": "assets/backgrounds/thumbnails/enchanted-forest-wedding-altar-8.webp"},
+      {"name": "Enchanted Forest Wedding Arch-3", "url": "assets/backgrounds/enchanted-forest-wedding-arch-3.webp", "thumbnail": "assets/backgrounds/thumbnails/enchanted-forest-wedding-arch-3.webp"},
+      {"name": "Enchanted Forest Wedding Arch-5", "url": "assets/backgrounds/enchanted-forest-wedding-arch-5.webp", "thumbnail": "assets/backgrounds/thumbnails/enchanted-forest-wedding-arch-5.webp"},
+      {"name": "Enchanted Forest Wedding Arch-8", "url": "assets/backgrounds/enchanted-forest-wedding-arch-8.webp", "thumbnail": "assets/backgrounds/thumbnails/enchanted-forest-wedding-arch-8.webp"},
+      {"name": "Enchanted Woodland Wedding Arbor-6", "url": "assets/backgrounds/enchanted-woodland-wedding-arbor-6.webp", "thumbnail": "assets/backgrounds/thumbnails/enchanted-woodland-wedding-arbor-6.webp"},
+      {"name": "Golden Garden Wedding Arch-1", "url": "assets/backgrounds/golden-garden-wedding-arch-1.webp", "thumbnail": "assets/backgrounds/thumbnails/golden-garden-wedding-arch-1.webp"},
+      {"name": "Golden Lakeside Wedding Arch-4", "url": "assets/backgrounds/golden-lakeside-wedding-arch-4.webp", "thumbnail": "assets/backgrounds/thumbnails/golden-lakeside-wedding-arch-4.webp"},
+      {"name": "Golden-Hour Beach Wedding Arch-7", "url": "assets/backgrounds/golden-hour-beach-wedding-arch-7.webp", "thumbnail": "assets/backgrounds/thumbnails/golden-hour-beach-wedding-arch-7.webp"},
+      {"name": "Gothic Burgundy Floral Wedding Chapel-10", "url": "assets/backgrounds/gothic-burgundy-floral-wedding-chapel-10.webp", "thumbnail": "assets/backgrounds/thumbnails/gothic-burgundy-floral-wedding-chapel-10.webp"},
+      {"name": "Gothic Forest Wedding Altar-1", "url": "assets/backgrounds/gothic-forest-wedding-altar-1.webp", "thumbnail": "assets/backgrounds/thumbnails/gothic-forest-wedding-altar-1.webp"},
+      {"name": "Gothic Forest Wedding Scenes-4", "url": "assets/backgrounds/gothic-forest-wedding-scenes-4.webp", "thumbnail": "assets/backgrounds/thumbnails/gothic-forest-wedding-scenes-4.webp"},
+      {"name": "Gothic Rose Chapel at Dusk-8", "url": "assets/backgrounds/gothic-rose-chapel-at-dusk-8.webp", "thumbnail": "assets/backgrounds/thumbnails/gothic-rose-chapel-at-dusk-8.webp"},
+      {"name": "Luxury Ivory-Gold Wedding Archway-6", "url": "assets/backgrounds/luxury-ivory-gold-wedding-archway-6.webp", "thumbnail": "assets/backgrounds/thumbnails/luxury-ivory-gold-wedding-archway-6.webp"},
+      {"name": "Misty Eco-Urban Monorail Plaza-11", "url": "assets/backgrounds/misty-eco-urban-monorail-plaza-11.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-eco-urban-monorail-plaza-11.webp"},
+      {"name": "Misty Forest Floral Gateway-4", "url": "assets/backgrounds/misty-forest-floral-gateway-4.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-floral-gateway-4.webp"},
+      {"name": "Misty Forest Glasshouse Wedding Venue-12", "url": "assets/backgrounds/misty-forest-glasshouse-wedding-venue-12.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-glasshouse-wedding-venue-12.webp"},
+      {"name": "Misty Forest Stream and Bridge-6", "url": "assets/backgrounds/misty-forest-stream-and-bridge-6.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-stream-and-bridge-6.webp"},
+      {"name": "Misty Forest Wedding Altar-5", "url": "assets/backgrounds/misty-forest-wedding-altar-5.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-wedding-altar-5.webp"},
+      {"name": "Misty Forest Wedding Arch-2", "url": "assets/backgrounds/misty-forest-wedding-arch-2.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-wedding-arch-2.webp"},
+      {"name": "Misty Forest Wedding Arch-5", "url": "assets/backgrounds/misty-forest-wedding-arch-5.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-wedding-arch-5.webp"},
+      {"name": "Misty Forest Wedding Arch-7", "url": "assets/backgrounds/misty-forest-wedding-arch-7.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-wedding-arch-7.webp"},
+      {"name": "Misty Forest Wedding Arch-9", "url": "assets/backgrounds/misty-forest-wedding-arch-9.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-wedding-arch-9.webp"},
+      {"name": "Misty Forest Wedding Ceremony-1", "url": "assets/backgrounds/misty-forest-wedding-ceremony-1.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-wedding-ceremony-1.webp"},
+      {"name": "Misty Forest Wedding Courtyard-3", "url": "assets/backgrounds/misty-forest-wedding-courtyard-3.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-wedding-courtyard-3.webp"},
+      {"name": "Misty Forest Wedding Garden Retreat-7", "url": "assets/backgrounds/misty-forest-wedding-garden-retreat-7.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-forest-wedding-garden-retreat-7.webp"},
+      {"name": "Misty Futuristic Forest Walkway-5", "url": "assets/backgrounds/misty-futuristic-forest-walkway-5.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-futuristic-forest-walkway-5.webp"},
+      {"name": "Misty Garden Wedding Pavilion-1", "url": "assets/backgrounds/misty-garden-wedding-pavilion-1.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-garden-wedding-pavilion-1.webp"},
+      {"name": "Misty Garden Wedding Venue Path-10", "url": "assets/backgrounds/misty-garden-wedding-venue-path-10.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-garden-wedding-venue-path-10.webp"},
+      {"name": "Misty Gothic Forest Wedding Altar-3", "url": "assets/backgrounds/misty-gothic-forest-wedding-altar-3.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-gothic-forest-wedding-altar-3.webp"},
+      {"name": "Misty Modern Forest Garden Path-4", "url": "assets/backgrounds/misty-modern-forest-garden-path-4.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-modern-forest-garden-path-4.webp"},
+      {"name": "Misty Sunlit Forest Park Walkway-8", "url": "assets/backgrounds/misty-sunlit-forest-park-walkway-8.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-sunlit-forest-park-walkway-8.webp"},
+      {"name": "Misty Urban Garden at Dawn-9", "url": "assets/backgrounds/misty-urban-garden-at-dawn-9.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-urban-garden-at-dawn-9.webp"},
+      {"name": "Misty Woodland Wedding Altar-2", "url": "assets/backgrounds/misty-woodland-wedding-altar-2.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-woodland-wedding-altar-2.webp"},
+      {"name": "Misty Woodland Wedding Altar-3", "url": "assets/backgrounds/misty-woodland-wedding-altar-3.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-woodland-wedding-altar-3.webp"},
+      {"name": "Misty Woodland Wedding Altar-7", "url": "assets/backgrounds/misty-woodland-wedding-altar-7.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-woodland-wedding-altar-7.webp"},
+      {"name": "Misty Woodland Wedding Arch-1", "url": "assets/backgrounds/misty-woodland-wedding-arch-1.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-woodland-wedding-arch-1.webp"},
+      {"name": "Misty Woodland Wedding Arch-2", "url": "assets/backgrounds/misty-woodland-wedding-arch-2.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-woodland-wedding-arch-2.webp"},
+      {"name": "Misty Woodland Wedding Pavilion-6", "url": "assets/backgrounds/misty-woodland-wedding-pavilion-6.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-woodland-wedding-pavilion-6.webp"},
+      {"name": "Misty Woodland Wedding Venue-6", "url": "assets/backgrounds/misty-woodland-wedding-venue-6.webp", "thumbnail": "assets/backgrounds/thumbnails/misty-woodland-wedding-venue-6.webp"},
+      {"name": "Moody Coastal Wedding Arch-5", "url": "assets/backgrounds/moody-coastal-wedding-arch-5.webp", "thumbnail": "assets/backgrounds/thumbnails/moody-coastal-wedding-arch-5.webp"},
+      {"name": "Moonlit Garden Wedding Elegance-3", "url": "assets/backgrounds/moonlit-garden-wedding-elegance-3.webp", "thumbnail": "assets/backgrounds/thumbnails/moonlit-garden-wedding-elegance-3.webp"},
+      {"name": "Rainy Burgundy Garden Wedding Arch-7", "url": "assets/backgrounds/rainy-burgundy-garden-wedding-arch-7.webp", "thumbnail": "assets/backgrounds/thumbnails/rainy-burgundy-garden-wedding-arch-7.webp"},
+      {"name": "Rainy Twilight Wedding Garden-4", "url": "assets/backgrounds/rainy-twilight-wedding-garden-4.webp", "thumbnail": "assets/backgrounds/thumbnails/rainy-twilight-wedding-garden-4.webp"},
+      {"name": "Romantic Garden Wedding Invitation Background-4", "url": "assets/backgrounds/romantic-garden-wedding-invitation-background-4.webp", "thumbnail": "assets/backgrounds/thumbnails/romantic-garden-wedding-invitation-background-4.webp"},
+      {"name": "Romantic Golden Floral Wedding Arch-1", "url": "assets/backgrounds/romantic-golden-floral-wedding-arch-1.webp", "thumbnail": "assets/backgrounds/thumbnails/romantic-golden-floral-wedding-arch-1.webp"},
+      {"name": "Romantic Lanterns by the Misty Lake-2", "url": "assets/backgrounds/romantic-lanterns-by-the-misty-lake-2.webp", "thumbnail": "assets/backgrounds/thumbnails/romantic-lanterns-by-the-misty-lake-2.webp"},
+      {"name": "Romantic Sunset Courtyard Wedding-9", "url": "assets/backgrounds/romantic-sunset-courtyard-wedding-9.webp", "thumbnail": "assets/backgrounds/thumbnails/romantic-sunset-courtyard-wedding-9.webp"},
+      {"name": "Romantic Wedding Scenes in Nature-2", "url": "assets/backgrounds/romantic-wedding-scenes-in-nature-2.webp", "thumbnail": "assets/backgrounds/thumbnails/romantic-wedding-scenes-in-nature-2.webp"},
+      {"name": "Sunset Garden Wedding Arch-5", "url": "assets/backgrounds/sunset-garden-wedding-arch-5.webp", "thumbnail": "assets/backgrounds/thumbnails/sunset-garden-wedding-arch-5.webp"},
+      {"name": "Twilight Chateau Wedding Arch-9", "url": "assets/backgrounds/twilight-chateau-wedding-arch-9.webp", "thumbnail": "assets/backgrounds/thumbnails/twilight-chateau-wedding-arch-9.webp"},
+      {"name": "Warm walnut", "url": "assets/walnut-grain.webp"}
+    ];
     const picker = document.querySelector('#images');
     const grid = document.querySelector('#backgrounds');
     const preview = document.querySelector('#preview');
     const title = document.querySelector('#preview-title');
+    const openCard = document.querySelector('#open-card');
     let local = [];
     let selected;
 
@@ -71,7 +139,10 @@
       title.textContent = scene.name;
       const url = new URL('petals.html', location.href);
       url.searchParams.set('background', scene.url);
+      openCard.href = url.href;
+      url.searchParams.set('preview', '1');
       preview.src = url.href;
+      openCard.hidden = scene.url.startsWith('blob:');
     }
 
     function render(scenes, initial) {
@@ -83,13 +154,18 @@
         button.type = 'button';
         button.setAttribute('aria-pressed', 'false');
         const image = document.createElement('img');
-        image.src = scene.url;
+        image.src = scene.thumbnail || scene.url;
         image.alt = '';
         image.loading = 'lazy';
         const label = document.createElement('span');
         label.textContent = scene.name;
         button.append(image, label);
-        button.addEventListener('click', () => choose(scene, button));
+        button.addEventListener('click', () => {
+          choose(scene, button);
+          if (matchMedia('(max-width: 48rem)').matches) {
+            title.scrollIntoView({ block: 'start' });
+          }
+        });
         grid.append(button);
         if (scene === initial) choose(scene, button);
       }
