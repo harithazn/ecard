@@ -11,22 +11,40 @@
       overflow: hidden;
       display: grid;
       place-items: center;
+      background: #211713;
+    }
+
+    .card {
+      position: relative;
+      isolation: isolate;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100svh;
       background: #4c3429 url("assets/walnut-grain.webp") center / cover no-repeat;
       color: #fff3db;
     }
 
+    .card.portrait {
+      width: min(100%, 56.25svh);
+      height: auto;
+      aspect-ratio: 9 / 16;
+      container-type: inline-size;
+    }
+
     canvas {
-      position: fixed;
+      position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
       pointer-events: none;
     }
 
-    body::after {
+    .card::after {
       z-index: 3;
       content: "";
-      position: fixed;
+      position: absolute;
       inset: 0;
       pointer-events: none;
       background:
@@ -45,8 +63,12 @@
       text-shadow: -3px 5px 18px #241017, -1px 2px 4px #251710;
     }
 
+    .portrait h1 {
+      font-size: clamp(2rem, 12cqw, 7rem);
+    }
+
     button {
-      position: fixed;
+      position: absolute;
       z-index: 4;
       right: 1rem;
       bottom: 1rem;
@@ -60,11 +82,14 @@
   </style>
 </head>
 <body>
-  <canvas aria-hidden="true"></canvas>
-  <h1>Rose Petals</h1>
-  <button type="button" disabled>Pause motion</button>
+  <main class="card">
+    <canvas aria-hidden="true"></canvas>
+    <h1>Rose Petals</h1>
+    <button type="button" disabled>Pause motion</button>
+  </main>
 
   <script>
+    const card = document.querySelector('.card');
     const background = new URLSearchParams(location.search).get('background');
     if (background && URL.canParse(background, location.href)) {
       const url = new URL(background, location.href);
@@ -74,7 +99,8 @@
         /\.(webp|png|jpe?g|avif)$/i.test(url.pathname);
       const localImage = url.protocol === 'blob:' && url.origin === location.origin;
       if (bundledImage || localImage) {
-        document.body.style.backgroundImage = `url(${JSON.stringify(url.href)})`;
+        card.classList.add('portrait');
+        card.style.backgroundImage = `url(${JSON.stringify(url.href)})`;
       }
     }
 
