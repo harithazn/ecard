@@ -52,7 +52,14 @@
     const canvas = document.querySelector('canvas');
     const context = canvas.getContext('2d');
     const button = document.querySelector('button');
-    const sprite = new Image();
+    const petalFiles = [
+      'rose-petal.webp',
+      'rose-petal-tapered.webp',
+      'rose-petal-heart.webp',
+      'rose-petal-folded.webp',
+      'rose-petal-scalloped.webp',
+      'rose-petal-twisted.webp'
+    ];
     const lighting = ['brightness(80%)', 'none', 'brightness(120%)'];
     let litSprites;
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
@@ -60,7 +67,7 @@
 
     // Adjust these values to change the density, size and fall speed.
     const settings = {
-      density: 100,
+      density: 50,
       maxPetals: 32,
       minSize: 16,
       maxSize: 55,
@@ -143,9 +150,18 @@
       if (!paused) frame = requestAnimationFrame(animate);
     }
 
-    sprite.onload = () => {
-      // Prepare the three lighting variations once, keeping the petal cutout.
-      litSprites = lighting.map(filter => {
+    function loadSprite(file) {
+      return new Promise((resolve, reject) => {
+        const sprite = new Image();
+        sprite.onload = () => resolve(sprite);
+        sprite.onerror = reject;
+        sprite.src = 'assets/' + file;
+      });
+    }
+
+    Promise.all(petalFiles.map(loadSprite)).then(sprites => {
+      // Prepare the lighting variations once, keeping each petal cutout.
+      litSprites = sprites.flatMap(sprite => lighting.map(filter => {
         const variant = document.createElement('canvas');
         variant.width = sprite.naturalWidth;
         variant.height = sprite.naturalHeight;
@@ -153,7 +169,7 @@
         variantContext.filter = filter;
         variantContext.drawImage(sprite, 0, 0);
         return variant;
-      });
+      }));
       resize();
       addEventListener('resize', resize);
       button.disabled = false;
@@ -166,13 +182,9 @@
         updatePlayback();
       });
       updatePlayback();
-    };
-
-    sprite.onerror = () => {
+    }).catch(() => {
       button.textContent = 'Petal image unavailable';
-    };
-
-    sprite.src = 'assets/rose-petal.webp';
+    });
   </script>
 </body>
 </html>
