@@ -53,6 +53,8 @@
     const context = canvas.getContext('2d');
     const button = document.querySelector('button');
     const sprite = new Image();
+    const lighting = ['brightness(80%)', 'none', 'brightness(120%)'];
+    let litSprites;
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     const random = (min, max) => min + Math.random() * (max - min);
 
@@ -82,7 +84,7 @@
         sway: random(12, 40),
         angle: random(0, 2 * Math.PI),
         spin: random(-.8, .8),
-        opacity: random(.45, .92)
+        sprite: litSprites[Math.floor(random(0, litSprites.length))]
       };
     }
 
@@ -108,8 +110,7 @@
         context.rotate(petal.angle + Math.sin(petal.phase) * .3);
         // Narrow the silhouette as the petal turns edge-on.
         context.scale(.16 + .84 * Math.abs(Math.cos(petal.phase)), 1);
-        context.globalAlpha = petal.opacity;
-        context.drawImage(sprite, -petal.size / 2, -petal.size / 2, petal.size, petal.size);
+        context.drawImage(petal.sprite, -petal.size / 2, -petal.size / 2, petal.size, petal.size);
         context.restore();
       }
     }
@@ -143,6 +144,16 @@
     }
 
     sprite.onload = () => {
+      // Prepare the three lighting variations once, keeping the petal cutout.
+      litSprites = lighting.map(filter => {
+        const variant = document.createElement('canvas');
+        variant.width = sprite.naturalWidth;
+        variant.height = sprite.naturalHeight;
+        const variantContext = variant.getContext('2d');
+        variantContext.filter = filter;
+        variantContext.drawImage(sprite, 0, 0);
+        return variant;
+      });
       resize();
       addEventListener('resize', resize);
       button.disabled = false;
