@@ -23,15 +23,17 @@
       pointer-events: none;
     }
 
-    canvas:not(#foreground) {
+    #settled-petals {
+      filter: blur(0);
+    }
+
+    #settled-petals.is-settled {
       filter: blur(clamp(2px, .48vw, 5px));
-      transform: scale(1.015);
+      transition: filter 3s ease-in-out;
     }
 
     #foreground {
       z-index: 2;
-      filter: blur(clamp(5px, .85vw, 12px));
-      transform: scale(1.035);
     }
 
     #foreground.opening {
@@ -40,6 +42,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       #foreground.opening { background: none; }
+      #settled-petals.is-settled { transition: none; }
     }
 
     body::after {
@@ -79,7 +82,7 @@
   </style>
 </head>
 <body>
-  <canvas aria-hidden="true"></canvas>
+  <canvas id="settled-petals" aria-hidden="true"></canvas>
   <h1>Rose Petals</h1>
   <canvas id="foreground" class="opening" aria-hidden="true"></canvas>
   <button type="button" disabled>Pause fall</button>
@@ -252,6 +255,7 @@
     }
 
     function updatePlayback() {
+      canvas.classList.toggle('is-settled', falling.length === 0);
       button.textContent = falling.length ? (paused ? 'Resume fall' : 'Pause fall') : 'Replay fall';
       if (falling.length && !paused) frame = requestAnimationFrame(animate);
     }
