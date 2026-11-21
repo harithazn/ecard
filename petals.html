@@ -88,6 +88,19 @@
   <button type="button" disabled>Pause fall</button>
 
   <script>
+    const background = new URLSearchParams(location.search).get('background');
+    if (background && URL.canParse(background, location.href)) {
+      const url = new URL(background, location.href);
+      const assets = new URL('assets/', location.href);
+      const bundledImage = url.origin === assets.origin &&
+        url.pathname.startsWith(assets.pathname) &&
+        /\.(webp|png|jpe?g|avif)$/i.test(url.pathname);
+      const localImage = url.protocol === 'blob:' && url.origin === location.origin;
+      if (bundledImage || localImage) {
+        document.body.style.backgroundImage = `url(${JSON.stringify(url.href)})`;
+      }
+    }
+
     const canvas = document.querySelector('canvas');
     const context = canvas.getContext('2d');
     const foreground = document.querySelector('#foreground');

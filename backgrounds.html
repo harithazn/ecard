@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Choose a wedding background</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, sans-serif;
+      color: #302621;
+      background: #f7f2eb;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { width: min(72rem, 100% - 2rem); margin: 3rem auto; }
+    h1 { font: 400 clamp(2.5rem, 6vw, 4.5rem)/1.05 Georgia, serif; margin: 0 0 1.25rem; }
+    h2 { font: 400 1.65rem Georgia, serif; margin: 0; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 2rem; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; margin: 1rem 0; }
+    .option {
+      display: block;
+      padding: .4rem;
+      text-align: left;
+      background: #fffaf4;
+      color: inherit;
+      border: 1px solid #c7b7a5;
+      border-radius: .75rem;
+      cursor: pointer;
+      font: inherit;
+    }
+    .option[aria-pressed="true"] { border-color: #783e4c; box-shadow: inset 0 0 0 2px #783e4c; }
+    .option img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: .45rem; background: #e5d5c4; }
+    .option span { display: block; padding: .4rem .2rem .2rem; overflow-wrap: anywhere; }
+    .file-label { display: block; font-weight: 600; margin-bottom: .35rem; }
+    input { max-width: 100%; }
+    .preview { align-self: start; }
+    iframe { display: block; margin-top: 1rem; border: 0; border-radius: 1rem; width: 100%; height: clamp(24rem, 58vh, 37rem); background: #4c3429; }
+    :focus-visible { outline: 2px solid #783e4c; outline-offset: 4px; }
+    @media (max-width: 48rem) { .layout { grid-template-columns: 1fr; gap: 1.25rem; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Choose a wedding background</h1>
+    <div class="layout">
+      <section aria-label="Background choices">
+        <label for="images" class="file-label">Add backgrounds from your device</label>
+        <input id="images" type="file" accept="image/*" multiple>
+        <div class="grid" id="backgrounds"></div>
+      </section>
+      <section class="preview" aria-labelledby="preview-title">
+        <h2 id="preview-title" aria-live="polite">Preview</h2>
+        <iframe id="preview" title="Wedding e-card preview"></iframe>
+      </section>
+    </div>
+  </main>
+  <script>
+    const bundled = [{ name: 'Warm walnut', url: 'assets/walnut-grain.webp' }];
+    const picker = document.querySelector('#images');
+    const grid = document.querySelector('#backgrounds');
+    const preview = document.querySelector('#preview');
+    const title = document.querySelector('#preview-title');
+    let local = [];
+    let selected;
+
+    function choose(scene, button) {
+      selected?.setAttribute('aria-pressed', 'false');
+      selected = button;
+      selected.setAttribute('aria-pressed', 'true');
+      title.textContent = scene.name;
+      const url = new URL('petals.html', location.href);
+      url.searchParams.set('background', scene.url);
+      preview.src = url.href;
+    }
+
+    function render(scenes, initial) {
+      grid.replaceChildren();
+      selected = undefined;
+      for (const scene of scenes) {
+        const button = document.createElement('button');
+        button.className = 'option';
+        button.type = 'button';
+        button.setAttribute('aria-pressed', 'false');
+        const image = document.createElement('img');
+        image.src = scene.url;
+        image.alt = '';
+        image.loading = 'lazy';
+        const label = document.createElement('span');
+        label.textContent = scene.name;
+        button.append(image, label);
+        button.addEventListener('click', () => choose(scene, button));
+        grid.append(button);
+        if (scene === initial) choose(scene, button);
+      }
+    }
+
+    picker.addEventListener('change', () => {
+      for (const scene of local) URL.revokeObjectURL(scene.url);
+      local = Array.from(picker.files)
+        .filter(file => file.type.startsWith('image/'))
+        .map(file => ({
+          name: file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' '),
+          url: URL.createObjectURL(file)
+        }));
+      render([...bundled, ...local], local[0] || bundled[0]);
+    });
+
+    render(bundled, bundled[0]);
+  </script>
+</body>
+</html>
