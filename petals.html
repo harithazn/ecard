@@ -85,17 +85,17 @@
       leafCount: 50
     };
 
-    let width, height, previousTime, frame;
+    let width, height, previousTime, frame, heading;
     let elapsed = 0;
     let falling = [];
     let paused = false;
 
-    function drawSprite(target, particle, x, y, angle, turn) {
+    function drawSprite(target, particle, x, y, angle, turn, perspective = 1) {
       target.save();
       target.translate(x, y);
       target.rotate(angle);
       target.scale(turn, 1);
-      const size = particle.size;
+      const size = particle.size * perspective;
       target.drawImage(particle.sprite, -size / 2, -size / 2, size, size);
       target.restore();
     }
@@ -111,21 +111,9 @@
       canvas.width = pile.width = Math.round(width * scale);
       canvas.height = pile.height = Math.round(height * scale);
 
-      const heading = title.getBoundingClientRect();
-      const gap = 22;
-      const left = heading.left - gap;
-      const top = heading.top - gap;
-      const right = heading.right + gap;
-      const bottom = heading.bottom + gap;
-
-      // Leave a window of exposed wood around the title in both layers.
-      for (const target of [context, pileContext]) {
-        target.setTransform(scale, 0, 0, scale, 0, 0);
-        target.beginPath();
-        target.rect(0, 0, width, height);
-        target.roundRect(left, top, right - left, bottom - top, 26);
-        target.clip('evenodd');
-      }
+      heading = title.getBoundingClientRect();
+      context.setTransform(scale, 0, 0, scale, 0, 0);
+      pileContext.setTransform(scale, 0, 0, scale, 0, 0);
 
       const baseCount = Math.min(settings.maxPetals, Math.max(9, Math.round(width / 42)));
       const petalCount = baseCount * settings.density;
@@ -135,16 +123,26 @@
       const rows = Math.max(1, Math.ceil(height / cell));
       const spots = [];
 
-      for (let row = rows - 1; row >= 0; row--) {
+      for (let row = 0; row < rows; row++) {
         for (let column = 0; column < columns; column++) {
           const x = (column + random(.05, .95)) * width / columns;
           const y = (row + random(.05, .95)) * height / rows;
-          if (x < left || x > right || y < top || y > bottom) spots.push({ x, y });
+          const size = random(1.8, 3) * cell;
+          // Vary the clearance around the lettering and keep whole silhouettes.
+          const ripple = 5 * Math.sin(x / 31 + y / 23);
+          const clearance = size * .71 + random(5, 22) + ripple;
+          if (distanceFromTitle(x, y) > clearance) spots.push({ x, y, size });
         }
       }
 
+      // Shuffle landing positions so the foreground fills from every direction.
+      for (let index = spots.length - 1; index > 0; index--) {
+        const other = Math.floor(random(0, index + 1));
+        [spots[index], spots[other]] = [spots[other], spots[index]];
+      }
+
       falling = Array.from({ length: spots.length ? total : 0 }, (_, index) => {
-        const { x, y } = spots[Math.floor(index * spots.length / total)];
+        const { x, y, size } = spots[Math.floor(index * spots.length / total)];
         // Space leaves throughout the pile and alternate the remaining petal colors.
         const leavesBefore = Math.floor(index * settings.leafCount / total);
         const isLeaf = Math.floor((index + 1) * settings.leafCount / total) > leavesBefore;
@@ -152,12 +150,14 @@
         return {
           x, y,
           sprite: sprites[Math.floor(random(0, sprites.length))],
-          size: random(1.8, 3) * cell,
+          size,
           angle: random(0, 2 * Math.PI),
-          drift: random(-70, 70),
+          driftX: random(-42, 42),
+          driftY: random(-42, 42),
+          depth: random(.2, .48),
           spin: random(-5, 5),
           delay: 3.4 * index / total + random(0, .35),
-          duration: 1.05 + 1.2 * y / height + random(0, .35)
+          duration: random(1.3, 2.4)
         };
       });
 
@@ -167,6 +167,12 @@
       }
       draw();
       updatePlayback();
+    }
+
+    function distanceFromTitle(x, y) {
+      const dx = Math.max(heading.left - x, x - heading.right, 0);
+      const dy = Math.max(heading.top - y, y - heading.bottom, 0);
+      return Math.hypot(dx, dy);
     }
 
     function land(particle) {
@@ -180,10 +186,14 @@
         const progress = (elapsed - particle.delay) / particle.duration;
         if (progress < 0) continue;
         const remaining = 1 - progress;
-        const x = particle.x + remaining * particle.drift * Math.cos(progress * 9);
-        const y = particle.y - remaining * (particle.y + particle.size);
+        const perspective = .15 + .85 * progress ** 1.6;
+        const inset = remaining * particle.depth;
+        const sway = remaining * Math.sin(progress * Math.PI * 2);
+        const x = particle.x + (width / 2 - particle.x) * inset + particle.driftX * sway;
+        const y = particle.y + (height / 2 - particle.y) * inset + particle.driftY * sway;
+        if (distanceFromTitle(x, y) <= particle.size * perspective * .71) continue;
         const turn = .95 - .8 * remaining * Math.abs(Math.sin(progress * 11));
-        drawSprite(context, particle, x, y, particle.angle + particle.spin * remaining, turn);
+        drawSprite(context, particle, x, y, particle.angle + particle.spin * remaining, turn, perspective);
       }
     }
 
