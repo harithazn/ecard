@@ -65,8 +65,11 @@
       'green-leaf-medium.webp',
       'green-leaf-dark.webp'
     ];
-    const lighting = ['brightness(80%)', 'none', 'brightness(120%)'];
-    let litSprites;
+    const redLighting = ['brightness(80%)', 'none', 'brightness(120%)'];
+    const whiteLighting = [145, 155, 165].map(
+      level => `grayscale(100%) contrast(45%) brightness(${level}%)`
+    );
+    let petalPalettes;
     let leafSprites;
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     const random = (min, max) => min + Math.random() * (max - min);
@@ -75,7 +78,7 @@
     const settings = {
       density: 50,
       maxPetals: 32,
-      leafCount: 100,
+      leafCount: 50,
       minSize: 16,
       maxSize: 55,
       minSpeed: 20,
@@ -114,7 +117,9 @@
       const baseCount = Math.min(settings.maxPetals, Math.max(9, Math.round(width / 42)));
       const count = baseCount * settings.density;
       particles = [
-        ...Array.from({ length: count }, () => makeParticle(litSprites, true)),
+        ...Array.from({ length: count }, (_, index) =>
+          makeParticle(petalPalettes[index % petalPalettes.length], true)
+        ),
         ...Array.from({ length: settings.leafCount }, () => makeParticle(leafSprites, true))
       ];
       draw();
@@ -178,15 +183,17 @@
     ]).then(([petalSprites, leaves]) => {
       leafSprites = leaves;
       // Prepare the lighting variations once, keeping each petal cutout.
-      litSprites = petalSprites.flatMap(sprite => lighting.map(filter => {
-        const variant = document.createElement('canvas');
-        variant.width = sprite.naturalWidth;
-        variant.height = sprite.naturalHeight;
-        const variantContext = variant.getContext('2d');
-        variantContext.filter = filter;
-        variantContext.drawImage(sprite, 0, 0);
-        return variant;
-      }));
+      petalPalettes = [redLighting, whiteLighting].map(lighting =>
+        petalSprites.flatMap(sprite => lighting.map(filter => {
+          const variant = document.createElement('canvas');
+          variant.width = sprite.naturalWidth;
+          variant.height = sprite.naturalHeight;
+          const variantContext = variant.getContext('2d');
+          variantContext.filter = filter;
+          variantContext.drawImage(sprite, 0, 0);
+          return variant;
+        }))
+      );
       resize();
       addEventListener('resize', resize);
       button.disabled = false;
